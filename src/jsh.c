@@ -10,7 +10,7 @@
 #include <sys/stat.h>
 
 struct jshell jsh = {
-    .defaultprompt = "dir\n>",
+    .defaultprompt = NULL,
     .line = NULL,
     .linelen = 0,
     .argv = NULL,
@@ -23,7 +23,10 @@ void jshell_main()
     char *line = NULL;
     size_t linelen = 0;
 
-    printf("%s", jsh.defaultprompt);
+    size_t defaultPromptLen;
+    jsh.defaultprompt = getcwd(jsh.defaultprompt, defaultPromptLen);
+
+    printf("%s\n>", jsh.defaultprompt);
     ssize_t charsread = getline(&line, &linelen, stdin);
 
     if (charsread == -1)
@@ -81,61 +84,6 @@ void jshell_lex()
     }
 }
 
-char *jshell_getfullpath(char *cmd)
-{
-    char *path, *path_copy, *path_token, *file_path;
-    int command_length, directory_length;
-    struct stat buffer;
-
-    path = getenv("PATH");
-
-    if (path)
-    {
-        path_copy = strdup(path);
-        command_length = strlen(cmd);
-
-        path_token = strtok(path_copy, ":");
-
-        while(path_token != NULL)
-        {
-            directory_length = strlen(path_token);
-            file_path = malloc(command_length + directory_length + 2); 
-
-            strcpy(file_path, path_token);
-            strcat(file_path, "/");
-            strcat(file_path, cmd);
-            strcat(file_path, "\0");
-
-            if (stat(file_path, &buffer) == 0)
-            {
-                free(path_copy);
-
-                return (file_path);
-            }
-            else 
-            {
-                free(file_path);
-                path_token = strtok(NULL, ":");
-
-            }
-
-        }
-        free(path_copy);
-
-        if (stat(cmd, &buffer) == 0)
-        {
-            return (cmd);
-        }
-
-
-        return (NULL);
-
-    }
-
-
-    return NULL; 
-}
-
 void jshell_parsecmd()
 {
 
@@ -190,6 +138,7 @@ void jshell_runcmd()
     if (jshell_builtincmd(jsh.argv[0]) == 0)
     {
         jshell_runbuiltincmd();
+
         return; // if it was a builtin command 
                 // then don't run execvp
     }

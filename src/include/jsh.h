@@ -10,7 +10,7 @@ struct jshell
     char *defaultprompt; // The default prompt on begining of each line
     char *line; // Inputed line from user
     size_t linelen; // The length of input line
-
+    
     char **argv; // argv[0] is command so first argument is in argvalue[1]
     unsigned int argc; // argument count
 
@@ -22,8 +22,7 @@ extern struct jshell jsh;
 void jshell_main();
 void jshell_error(char *err, int callperror);
 void jshell_lex();
-char *jshell_getfullpath(char * cmd); // * returns the full path of command passed in
-                                      // * if it's in the path env
+
 // TODO: implement!
 // add functionality to pipe and chain commands
 void jshell_parsecmd();
