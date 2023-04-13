@@ -6,17 +6,24 @@
 
 int main(int argc, char **argv)
 {
+    jshell_getdir();
     while (1)
     {
         jshell_main();
         jshell_lex();
         
-        if (jshell_fork() == 0)
+        // so we don't create a child process for the builtin commands
+        if (jshell_builtincmd(jsh.argv[0]) == 0)
+            jshell_runbuiltincmd();
+        else 
         {
-            jshell_runcmd();
-            exit(0);
+            if (jshell_fork() == 0)
+            {
+                jshell_runcmd();
+                exit(0);
+            }
         }
-
+        
         wait(0); // this lets the output be prinited
                  // before the loop continues
 

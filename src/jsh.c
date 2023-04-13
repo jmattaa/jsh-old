@@ -5,9 +5,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <sys/stat.h>
 
 struct jshell jsh = {
     .defaultprompt = NULL,
@@ -15,8 +15,13 @@ struct jshell jsh = {
     .linelen = 0,
     .argv = NULL,
     .argc = 0,
-    .builtincmd = {"exit", "clear"},
+    .builtincmd = {"exit", "clear", "cd"},
 }; 
+
+void jshell_getdir()
+{
+    getcwd(jsh.cwd, sizeof(jsh.cwd));
+}
 
 void jshell_main()
 {
@@ -24,7 +29,7 @@ void jshell_main()
     size_t linelen = 0;
 
     size_t defaultPromptLen;
-    jsh.defaultprompt = getcwd(jsh.defaultprompt, defaultPromptLen);
+    jsh.defaultprompt = jsh.cwd;
 
     printf("%s\n>", jsh.defaultprompt);
     ssize_t charsread = getline(&line, &linelen, stdin);
@@ -116,12 +121,29 @@ void jshell_runbuiltincmd()
     char *cmd = jsh.argv[0];
     if (strcmp(cmd, "exit") == 0)
     {
-        kill(getppid(), SIGTERM); // kill parent pid process
         exit(0);
     } 
     else if (strcmp(cmd, "clear") == 0)
     {
         printf("\033[2J\033[1;H");
+        return;
+    }
+    else if (strcmp(cmd, "cd") == 0)
+    {
+        char *dir;
+
+        if (jsh.argc > 2)
+            fprintf(stderr, "cd: too many arguments");
+        if (jsh.argc == 1) // cd with no arguments cd into user home
+            dir = getenv("HOME");
+        else if (jsh.argc == 2)
+            dir = jsh.argv[1];
+
+        if (chdir(dir) != 0)
+            perror("cd");
+
+        jshell_getdir();
+
         return;
     }
 
@@ -135,13 +157,6 @@ void jshell_runcmd()
     if (jsh.argv[0] == 0)
         jshell_error("no filename for command!\n", 0);
 
-    if (jshell_builtincmd(jsh.argv[0]) == 0)
-    {
-        jshell_runbuiltincmd();
-
-        return; // if it was a builtin command 
-                // then don't run execvp
-    }
 
     if (execvp(jsh.argv[0], jsh.argv) == -1)
         perror("jsh");
