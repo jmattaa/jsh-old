@@ -29,7 +29,7 @@ void jshell_lex();
 
 // TODO: implement!
 // add functionality to pipe and chain commands
-void jshell_parsecmd();
+int jshell_parsecmd();
 int jshell_fork();
 int jshell_builtincmd(char *cmd);
 void jshell_runbuiltincmd();

@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <glib-2.0/glib.h>
 
 struct jshell jsh = {
     .defaultprompt = NULL,
@@ -89,9 +90,80 @@ void jshell_lex()
     }
 }
 
-void jshell_parsecmd()
+char* getCmdOutput(const char* command) 
 {
+    FILE* fp;
+    char* output = NULL;
+    char buffer[1024];
+    size_t outputSize = 0;
 
+    fp = popen(command, "r");
+    if (fp == NULL) 
+        jshell_error("Couldn't run command", 1);
+
+    while (fgets(buffer, sizeof(buffer), fp) != NULL)
+    {
+        size_t bufferSize = strlen(buffer);
+
+        char* temp = realloc(output, outputSize + bufferSize + 1);
+        if (temp == NULL) 
+        {
+            jshell_error("Failed to allocate memory\n", 1);
+            free(output);
+            pclose(fp);
+            return NULL;
+        }
+
+        output = temp;
+        strcpy(output + outputSize, buffer);
+        outputSize += bufferSize;
+    }
+
+    pclose(fp);
+
+    return output;
+}
+
+int jshell_parsecmd()
+{
+    // starting at 1 because the first argument in the command 
+    // is argv[1]
+    // argv[0] is the command name
+    for (int i = 1; i < jsh.argc; i++)
+    {
+        // pipe operation
+        if (strcmp(jsh.argv[i], "|") == 0)
+        {
+            // expects something after the pipe
+            if (jsh.argc == i)
+            {
+                fprintf(stderr, "Parsing Error: Expected command after `|`\n");
+                return 1;
+            }
+
+            // get the output of the command after the pipe and add it to 
+            // the command before the pipe
+
+            // execute the command after the pipe and get the output
+
+            // TODO: handle the case that we have chained piped commands
+            char **argv = jsh.argv;
+            for (int j = i, k = 0; j < jsh.argc; j++, k++)
+                argv[k] = argv[j];
+            
+            char *command = g_strjoin(" ", argv);
+            char *output = getCmdOutput(command);
+            g_free(command);
+
+
+            // add the output to the first command and format jsh.argv for jsh_runcmd to run
+            jsh.argv = argv;
+
+            free(output);
+        }
+    }
+
+    return 0;
 }
 
 // wraps around fork funktion
@@ -133,7 +205,7 @@ void jshell_runbuiltincmd()
         char *dir;
 
         if (jsh.argc > 2)
-            fprintf(stderr, "cd: too many arguments");
+            fprintf(stderr, "cd: Too many arguments\n");
         if (jsh.argc == 1) // cd with no arguments cd into user home
             dir = getenv("HOME");
         else if (jsh.argc == 2)
